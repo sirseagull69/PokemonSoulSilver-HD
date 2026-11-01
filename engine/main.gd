@@ -12,11 +12,10 @@ var _cam := Camera3D.new()
 var _yaw := 0.0
 var _pitch := -48.0
 var _dist := 16.0
-var _env: WorldEnvironment
-var _sun: DirectionalLight3D
-var _day := true
+var _atmo: Atmosphere
 var _fx := true
 var _label := Label.new()
+var _hilfe := ""
 
 
 func _ready() -> void:
@@ -157,11 +156,11 @@ func _start(path: String) -> void:
 	var loader := MapLoader.new(rom, Look.material)
 	var town := loader.load_town("T20", 1)
 	add_child(town)
-	_env = Look.environment(_day)
-	add_child(_env)
-	_sun = Look.sun(_day)
-	add_child(_sun)
 	add_child(_focus)
+	_atmo = Atmosphere.new()
+	_atmo.follow = _focus
+	add_child(_atmo)
+	_atmo.add_lamps_for(town)
 	_cam.attributes = Look.camera_attributes()
 	_cam.fov = 32.0
 	_focus.add_child(_cam)
@@ -174,7 +173,8 @@ func _start(path: String) -> void:
 	marker.mesh = cap
 	marker.position = Vector3(0, 1.0, 0)
 	_focus.add_child(marker)
-	_status("Neuborkia geladen (%d ms). A: Tag/Nacht · B: Effekte" % (Time.get_ticks_msec() - t0))
+	_hilfe = "A: Tag/Nacht · Y: Wetter · B: Effekte an/aus"
+	_status("Neuborkia geladen (%d ms)\n%s" % [Time.get_ticks_msec() - t0, _hilfe])
 
 
 func _process(delta: float) -> void:
@@ -200,23 +200,27 @@ func _process(delta: float) -> void:
 		ca.dof_blur_near_distance = max(_dist - 7.0, 1.0)
 
 
-func _unhandled_input(e: InputEvent) -> void:
-	if _env == null:
+func _input(e: InputEvent) -> void:
+	if _atmo == null:
 		return
-	if e.is_action_pressed("ui_accept") or (e is InputEventKey and e.pressed and e.keycode == KEY_T):
-		_day = not _day
-		_env.queue_free(); _sun.queue_free()
-		_env = Look.environment(_day); _sun = Look.sun(_day)
-		add_child(_env); add_child(_sun)
-		_env.environment.ssao_enabled = _fx
-	elif e.is_action_pressed("ui_cancel") or (e is InputEventKey and e.pressed and e.keycode == KEY_F):
-		_fx = not _fx
-		var env := _env.environment
-		env.ssao_enabled = _fx
-		env.glow_enabled = _fx
-		env.adjustment_enabled = _fx
-		_sun.shadow_enabled = _fx
-		var ca := _cam.attributes as CameraAttributesPractical
-		ca.dof_blur_far_enabled = _fx
-		ca.dof_blur_near_enabled = _fx
-		_status("Effekte " + ("an" if _fx else "aus"))
+	var btn := -1
+	if e is InputEventJoypadButton and e.pressed:
+		btn = e.button_index
+	elif e is InputEventKey and e.pressed and not e.echo:
+		match e.keycode:
+			KEY_T: btn = JOY_BUTTON_A
+			KEY_F: btn = JOY_BUTTON_B
+			KEY_W: btn = JOY_BUTTON_Y
+	match btn:
+		JOY_BUTTON_A:
+			_atmo.toggle_day()
+			_status(("Tag" if _atmo.is_day() else "Nacht") + "\n" + _hilfe)
+		JOY_BUTTON_Y, JOY_BUTTON_X:
+			_status("Wetter: " + _atmo.next_weather() + "\n" + _hilfe)
+		JOY_BUTTON_B:
+			_fx = not _fx
+			_atmo.set_effects(_fx)
+			var ca := _cam.attributes as CameraAttributesPractical
+			ca.dof_blur_far_enabled = _fx
+			ca.dof_blur_near_enabled = _fx
+			_status("Effekte " + ("an" if _fx else "aus") + "\n" + _hilfe)
