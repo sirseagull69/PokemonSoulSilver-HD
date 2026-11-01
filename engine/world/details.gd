@@ -1,8 +1,8 @@
 class_name Details
 extends Node3D
 ## Liebe zum Detail – alles prozedural, nichts aus der ROM nachgezeichnet:
-## animiertes Wasser auf Wasserkacheln, wiegende Grasbüschel am Rand von
-## Baumreihen, Pollen/Staub am Tag, Glühwürmchen nachts, fallende Blätter.
+## animiertes Wasser auf Wasserkacheln, feines Gras auf grünem Boden (Farbe aus
+## der Bodentextur darunter), Pollen am Tag, Glühwürmchen nachts, fallende Blätter.
 
 const WATER_MIN := 0x10
 const WATER_MAX := 0x1F
@@ -28,10 +28,52 @@ static func _height_at(faces: PackedVector3Array, p: Vector3) -> float:
 	return best
 
 
+## Höhe UND Bodenfarbe (aus Textur × Vertexfarbe) an (x,z) bestimmen.
+static func _ground(mi: MeshInstance3D, p: Vector3) -> Array:
+	var best := -INF
+	var col := Color.BLACK
+	var from := Vector3(p.x, 100.0, p.z)
+	for s in mi.mesh.get_surface_count():
+		var arr := mi.mesh.surface_get_arrays(s)
+		var vs: PackedVector3Array = arr[Mesh.ARRAY_VERTEX]
+		var uvs: PackedVector2Array = arr[Mesh.ARRAY_TEX_UV]
+		var cols: PackedColorArray = arr[Mesh.ARRAY_COLOR]
+		var mat := mi.mesh.surface_get_material(s) as StandardMaterial3D
+		for i in range(0, vs.size(), 3):
+			var hit = Geometry3D.ray_intersects_triangle(from, Vector3.DOWN, vs[i], vs[i + 1], vs[i + 2])
+			if hit == null or hit.y <= best:
+				continue
+			best = hit.y
+			var bc := Geometry3D.get_triangle_barycentric_coords(hit, vs[i], vs[i + 1], vs[i + 2])
+			var c := Color.WHITE
+			if cols.size() > i + 2:
+				c = cols[i] * bc.x + cols[i + 1] * bc.y + cols[i + 2] * bc.z
+			if mat and mat.albedo_texture and uvs.size() > i + 2:
+				var uv: Vector2 = uvs[i] * bc.x + uvs[i + 1] * bc.y + uvs[i + 2] * bc.z
+				var img := mat.albedo_texture.get_image()
+				var w := img.get_width()
+				var h := img.get_height()
+				var tx := posmod(int(floor(uv.x * w)), w)
+				var ty := posmod(int(floor(uv.y * h)), h)
+				# 3x3 mitteln, damit einzelne Pixel nicht dominieren
+				var sum := Color(0, 0, 0, 0)
+				for dy in range(-1, 2):
+					for dx in range(-1, 2):
+						sum += img.get_pixel(posmod(tx + dx, w), posmod(ty + dy, h))
+				c = c * (sum / 9.0)
+			col = c
+	return [best, col]
+
+
+static func _is_green(c: Color) -> bool:
+	return c.g > c.r * 1.08 and c.g > c.b * 1.15 and c.g > 0.25
+
+
 func build(town: Node3D) -> void:
 	_make_materials()
 	var water_tiles: Array[Vector3] = []
 	var grass_spots: Array[Vector3] = []
+	var grass_cols: Array[Color] = []
 	var tree_spots: Array[Vector3] = []
 	for c in town.get_children():
 		var mi := c as MeshInstance3D
@@ -56,12 +98,15 @@ func build(town: Node3D) -> void:
 						var h := _height_at(faces, local)
 						if h > -INF:
 							tree_spots.append(mi.position + Vector3(local.x, h, local.z))
-				elif beh == 0 and blocked == 0 and _next_to(tiles, x, y, TREE):
-					var h := _height_at(faces, local)
-					if h > -INF:
-						grass_spots.append(mi.position + Vector3(local.x, h, local.z))
+				elif beh == 0 and blocked == 0:
+					# Gras nur dort, wo der Boden darunter wirklich grün ist (je 2x2 Proben pro Kachel)
+					for q in [Vector3(-0.25, 0, -0.25), Vector3(0.25, 0, -0.25), Vector3(-0.25, 0, 0.25), Vector3(0.25, 0, 0.25)]:
+						var g := _ground(mi, local + q)
+						if g[0] > -INF and _is_green(g[1]):
+							grass_spots.append(mi.position + Vector3(local.x + q.x, g[0], local.z + q.z))
+							grass_cols.append(g[1])
 	_build_water(water_tiles)
-	_build_grass(grass_spots)
+	_build_grass(grass_spots, grass_cols)
 	_build_particles(tree_spots)
 
 
@@ -122,22 +167,28 @@ void fragment() {
 	var gs := Shader.new()
 	gs.code = """
 shader_type spatial;
-render_mode cull_disabled, diffuse_lambert;
-uniform vec3 tip : source_color = vec3(0.62, 0.86, 0.36);
-uniform vec3 base : source_color = vec3(0.16, 0.38, 0.14);
+render_mode cull_disabled, diffuse_lambert, specular_disabled;
 uniform float wind = 1.0;
 varying float h;
+varying vec3 ground;
 void vertex() {
-	h = UV.y;
+	h = UV.y;                      // 1 = unten, 0 = Spitze
+	ground = COLOR.rgb;
 	vec3 w = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz;
-	float sway = sin(TIME * 1.8 + w.x * 0.7 + w.z * 0.5) * 0.12 + sin(TIME * 4.1 + w.z * 2.0) * 0.03;
-	VERTEX.x += sway * (1.0 - UV.y) * wind;
-	VERTEX.z += sway * 0.5 * (1.0 - UV.y) * wind;
+	float bend = (1.0 - h) * (1.0 - h);
+	float sway = sin(TIME * 1.6 + w.x * 0.6 + w.z * 0.4) * 0.07 + sin(TIME * 3.7 + w.z * 1.8 + w.x) * 0.02;
+	VERTEX.x += sway * bend * wind;
+	VERTEX.z += sway * 0.5 * bend * wind;
+	NORMAL = (inverse(MODEL_MATRIX) * vec4(0.0, 1.0, 0.0, 0.0)).xyz;   // wie der Boden beleuchtet
 }
 void fragment() {
+	vec3 base = ground * 0.82;
+	vec3 tip = ground * vec3(1.18, 1.22, 1.0) + vec3(0.04, 0.04, 0.0);
 	ALBEDO = mix(tip, base, h);
-	ROUGHNESS = 0.8;
-	BACKLIGHT = vec3(0.25, 0.35, 0.1);
+	ROUGHNESS = 0.9;
+	BACKLIGHT = ground * 0.35;
+	AO = mix(1.0, 0.7, h);
+	AO_LIGHT_AFFECT = 0.4;
 }
 """
 	_grass_mat = ShaderMaterial.new()
@@ -168,36 +219,40 @@ func _build_water(tiles: Array[Vector3]) -> void:
 	add_child(mi)
 
 
-func _build_grass(spots: Array[Vector3]) -> void:
+func _build_grass(spots: Array[Vector3], cols: Array[Color]) -> void:
 	if spots.is_empty():
 		return
-	# Ein Büschel = 3 gekreuzte, sich verjüngende Halme
+	# Feines Büschel: 10 schmale, leicht gebogene Halme (je 2 Segmente)
 	var st := SurfaceTool.new()
 	st.begin(Mesh.PRIMITIVE_TRIANGLES)
-	for k in 7:
-		var ang := k * TAU / 7.0
-		var dir := Vector3(cos(ang), 0, sin(ang)) * 0.06
-		var off := Vector3(cos(ang * 2.3), 0, sin(ang * 1.7)) * 0.12
-		var hgt := 0.32 + 0.12 * sin(k * 1.9)
-		st.set_uv(Vector2(0, 1)); st.add_vertex(off - dir)
-		st.set_uv(Vector2(1, 1)); st.add_vertex(off + dir)
-		st.set_uv(Vector2(0.5, 0)); st.add_vertex(off + Vector3(dir.z, hgt, -dir.x) * Vector3(1, 1, 1))
-	st.generate_normals()
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 11
+	for k in 10:
+		var ang := rng.randf() * TAU
+		var off := Vector3(rng.randf_range(-0.16, 0.16), 0, rng.randf_range(-0.16, 0.16))
+		var side := Vector3(cos(ang), 0, sin(ang)) * 0.018
+		var lean := Vector3(-side.z, 0, side.x).normalized() * rng.randf_range(0.03, 0.08)
+		var hgt := rng.randf_range(0.14, 0.26)
+		var p0 := off
+		var p1 := off + Vector3(0, hgt * 0.55, 0) + lean * 0.35
+		var p2 := off + Vector3(0, hgt, 0) + lean
+		# untere Hälfte (Viereck)
+		for v in [[p0 - side, 1.0], [p0 + side, 1.0], [p1 + side * 0.6, 0.45], [p0 - side, 1.0], [p1 + side * 0.6, 0.45], [p1 - side * 0.6, 0.45]]:
+			st.set_uv(Vector2(0, v[1])); st.set_normal(Vector3.UP); st.add_vertex(v[0])
+		# Spitze
+		for v in [[p1 - side * 0.6, 0.45], [p1 + side * 0.6, 0.45], [p2, 0.0]]:
+			st.set_uv(Vector2(0, v[1])); st.set_normal(Vector3.UP); st.add_vertex(v[0])
 	var tuft := st.commit()
 	var mm := MultiMesh.new()
 	mm.transform_format = MultiMesh.TRANSFORM_3D
+	mm.use_colors = true
 	mm.mesh = tuft
-	var per := 6
-	mm.instance_count = spots.size() * per
-	var rng := RandomNumberGenerator.new()
-	rng.seed = 7
-	var i := 0
-	for s in spots:
-		for _k in per:
-			var p := s + Vector3(rng.randf_range(-0.45, 0.45), 0.0, rng.randf_range(-0.45, 0.45))
-			var basis := Basis(Vector3.UP, rng.randf() * TAU).scaled(Vector3.ONE * rng.randf_range(0.7, 1.3))
-			mm.set_instance_transform(i, Transform3D(basis, p))
-			i += 1
+	mm.instance_count = spots.size()
+	for i in spots.size():
+		var basis := Basis(Vector3.UP, rng.randf() * TAU).scaled(Vector3.ONE * rng.randf_range(0.8, 1.25))
+		var j := Vector3(rng.randf_range(-0.12, 0.12), 0.0, rng.randf_range(-0.12, 0.12))
+		mm.set_instance_transform(i, Transform3D(basis, spots[i] + j))
+		mm.set_instance_color(i, cols[i])
 	var mmi := MultiMeshInstance3D.new()
 	mmi.name = "Gras"
 	mmi.multimesh = mm
