@@ -14,11 +14,12 @@ Eigene Engine (Godot 4), die Karten aus der **eigenen** HeartGold-/SoulSilver-RO
 - `engine/world/map_loader.gd` – Kartenkopf-Tabelle (aus ARM9, selbstprüfend über Tileset), Matrix, Kartenblöcke, Gebäude
 - `engine/world/look.gd` – Materialien, Tilt-Shift
 - `engine/world/details.gd` – prozedurale Details: animiertes Wasser auf Wasserkacheln (aus den Kachel-Attributen der ROM), Pollen am Tag, Glühwürmchen nachts, fallende Blätter
-- `engine/world/atmosphere.gd` – Tageszeit (weich), Wetter, Wolkenschatten, Sonnenstrahlen (volumetrischer Nebel), Regen, Lichter an Häusern nachts
+- `engine/world/atmosphere.gd` – Tageszeit (weich), Wetter, Sonnenstrahlen (volumetrischer Nebel), Regen, Lichter an Häusern nachts
 - `engine/tests/load_test.gd` – Headless-Test, gibt nur Zahlen aus
 - Branch `emulator-licht`: früherer Ansatz (WatermelonDS-Fork mit SSAO-Pass)
 
 ## Stand
+- 0.4.5 (01.11.2026): Wolkenschatten am Boden entfernt (wirkten wie Wellen).
 - 0.4.4 (01.11.2026): Sonnig/Klar weniger grell (Sonne, Belichtung, Glow, Umgebungslicht gesenkt); max. 60 FPS und 3D-Auflösung 85 % mit FSR, damit der Thor kühler bleibt.
 - 0.4.3 (01.11.2026): Flüssiger bei Regen/Gewitter – keine Bildschirm-Spiegelung mehr (Pfützen glänzen trotzdem), weniger Regentropfen, kleineres Nebelgitter, SSAO in halber Auflösung, automatische Qualität nach Bildrate.
 - 0.4.2 (01.11.2026): Gras wieder entfernt (sah nicht gut aus).

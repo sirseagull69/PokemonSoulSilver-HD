@@ -55,7 +55,6 @@ func _ready() -> void:
 	sun.light_volumetric_fog_energy = 1.6
 	add_child(sun)
 	_setup_env()
-	_setup_clouds()
 	_setup_puddles()
 	_setup_rain()
 	_apply(0.0)
@@ -216,7 +215,6 @@ func set_effects(on: bool) -> void:
 	env.adjustment_enabled = on
 	env.volumetric_fog_enabled = on
 	sun.shadow_enabled = on
-	_clouds.visible = on
 	_puddles.visible = on
 
 
@@ -265,8 +263,6 @@ func _process(delta: float) -> void:
 	if follow:
 		_rain.global_position = follow.global_position + Vector3(0, 22, 0)
 	_cloud_off += Vector2(1.4, 0.6) * (0.5 + wind * 3.0) * delta
-	_clouds.position.x = fmod(_cloud_off.x, 220.0)
-	_clouds.position.z = fmod(_cloud_off.y, 220.0)
 	_apply(delta)
 
 
@@ -302,7 +298,6 @@ func _apply(_delta: float) -> void:
 	env.volumetric_fog_density = 0.01 + fog * 0.06 + rain * 0.012
 	env.volumetric_fog_albedo = Color(0.9, 0.92, 1.0)
 
-	_clouds.modulate = Color(1, 1, 1, clamp(0.1 + clouds * 0.6, 0.0, 0.8) * daylight)
 
 	# Regen: Menge, Schräglage durch Wind
 	_rain.emitting = rain > 0.15 and effects
