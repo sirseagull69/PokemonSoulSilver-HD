@@ -17,6 +17,7 @@ Eigene Engine (Godot 4), die Karten aus der **eigenen** HeartGold-/SoulSilver-RO
 - Branch `emulator-licht`: früherer Ansatz (WatermelonDS-Fork mit SSAO-Pass)
 
 ## Stand
+- 0.1.1 (01.11.2026): ROM-Suche auch auf SD-Karte, wartet auf Dateizugriff, eigener Auswahldialog statt nativem.
 - 0.1 (01.11.2026): Neuborkia + Nachbarblöcke als 3D-Szene, freie Kamera, Licht. Platzhalter statt Spielfigur. Nicht auf dem Thor getestet.
 
 ## Lizenz

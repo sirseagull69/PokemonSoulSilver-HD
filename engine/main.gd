@@ -25,11 +25,32 @@ func _ready() -> void:
 	var layer := CanvasLayer.new()
 	layer.add_child(_label)
 	add_child(layer)
+	_ui = layer
 	if OS.get_name() == "Android":
+		get_tree().on_request_permissions_result.connect(func(_p: String, _g: bool) -> void: _search())
 		OS.request_permissions()
+	_search()
+
+
+var _ui: CanvasLayer
+var _searching := false
+var _started := false
+
+
+## Bei Rückkehr aus den Android-Einstellungen („Zugriff auf alle Dateien“) nochmal suchen.
+func _notification(what: int) -> void:
+	if what == NOTIFICATION_APPLICATION_FOCUS_IN and not _started:
+		_search()
+
+
+func _search() -> void:
+	if _searching or _started:
+		return
+	_searching = true
 	_status("Suche ROM …")
 	await get_tree().process_frame
 	var path := _find_rom()
+	_searching = false
 	if path == "":
 		_pick_rom()
 	else:
@@ -46,15 +67,37 @@ func _find_rom() -> String:
 		var p: String = cfg.get_value("rom", "path", "")
 		if p != "" and FileAccess.file_exists(p):
 			return p
-	for d in ROM_DIRS:
-		var da := DirAccess.open(d)
-		if da == null:
+	# Interner Speicher und SD-Karte(n), bis 4 Ordner tief
+	var roots := PackedStringArray(["/storage/emulated/0"])
+	var st := DirAccess.open("/storage")
+	if st:
+		for d in st.get_directories():
+			if d != "emulated" and d != "self":
+				roots.append("/storage/" + d)
+	for r in roots:
+		var found := _scan(r, 0)
+		if found != "":
+			return found
+	return ""
+
+
+func _scan(dir: String, depth: int) -> String:
+	var da := DirAccess.open(dir)
+	if da == null:
+		return ""
+	for f in da.get_files():
+		if f.to_lower().ends_with(".nds"):
+			var full := dir.path_join(f)
+			if _is_hgss(full):
+				return full
+	if depth >= 4:
+		return ""
+	for d in da.get_directories():
+		if d.begins_with(".") or d == "Android" or d == "DCIM" or d == "Pictures" or d == "Movies":
 			continue
-		for f in da.get_files():
-			if f.to_lower().ends_with(".nds"):
-				var full: String = d.path_join(f)
-				if _is_hgss(full):
-					return full
+		var r := _scan(dir.path_join(d), depth + 1)
+		if r != "":
+			return r
 	return ""
 
 
@@ -68,23 +111,42 @@ func _is_hgss(path: String) -> bool:
 
 
 func _pick_rom() -> void:
-	_status("Keine SoulSilver-/HeartGold-ROM gefunden.\nBitte die .nds-Datei auswählen.")
+	_status("Keine SoulSilver-/HeartGold-ROM gefunden.\nFalls gefragt: „Zugriff auf alle Dateien“ erlauben – oder die .nds-Datei auswählen.")
+	if _ui.has_node("Picker"):
+		return
+	# Godots eigener Dialog (der native Android-Dialog liefert keine normalen Pfade)
 	var fd := FileDialog.new()
+	fd.name = "Picker"
+	fd.title = "SoulSilver-ROM auswählen"
 	fd.file_mode = FileDialog.FILE_MODE_OPEN_FILE
 	fd.access = FileDialog.ACCESS_FILESYSTEM
-	fd.use_native_dialog = true
+	fd.use_native_dialog = false
 	fd.filters = PackedStringArray(["*.nds ; NDS-ROM"])
-	fd.file_selected.connect(func(p: String) -> void: _start(p))
-	add_child(fd)
-	fd.popup_centered_ratio(0.8)
+	fd.current_dir = "/storage/emulated/0"
+	fd.content_scale_factor = 1.6
+	fd.file_selected.connect(func(p: String) -> void:
+		fd.queue_free()
+		_start(p))
+	_ui.add_child(fd)
+	fd.popup_centered_ratio(0.9)
 
 
 func _start(path: String) -> void:
+	if _started:
+		return
+	if not _is_hgss(path):
+		_status("Das ist keine HeartGold/SoulSilver-ROM:\n" + path)
+		_pick_rom()
+		return
+	_started = true
+	if _ui.has_node("Picker"):
+		_ui.get_node("Picker").queue_free()
 	_status("Lade ROM …")
 	await get_tree().process_frame
 	var rom := NdsRom.open(path)
 	if rom == null or not rom.has_file("a/0/6/5"):
 		_status("Das ist keine HeartGold/SoulSilver-ROM.")
+		_started = false
 		return
 	var cfg := ConfigFile.new()
 	cfg.set_value("rom", "path", path)
