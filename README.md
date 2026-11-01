@@ -19,6 +19,7 @@ Eigene Engine (Godot 4), die Karten aus der **eigenen** HeartGold-/SoulSilver-RO
 - Branch `emulator-licht`: früherer Ansatz (WatermelonDS-Fork mit SSAO-Pass)
 
 ## Stand
+- 0.4.4 (01.11.2026): Sonnig/Klar weniger grell (Sonne, Belichtung, Glow, Umgebungslicht gesenkt); max. 60 FPS und 3D-Auflösung 85 % mit FSR, damit der Thor kühler bleibt.
 - 0.4.3 (01.11.2026): Flüssiger bei Regen/Gewitter – keine Bildschirm-Spiegelung mehr (Pfützen glänzen trotzdem), weniger Regentropfen, kleineres Nebelgitter, SSAO in halber Auflösung, automatische Qualität nach Bildrate.
 - 0.4.2 (01.11.2026): Gras wieder entfernt (sah nicht gut aus).
 - 0.4.1 (01.11.2026): Gras neu – feine, gebogene Halme statt grober Dreiecke, Farbe aus dem Boden darunter, nur wo der Boden grün ist, wie der Boden beleuchtet (keine dunklen Seiten).

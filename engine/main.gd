@@ -19,6 +19,10 @@ var _hilfe := ""
 
 
 func _ready() -> void:
+	# Thor nicht unnötig heizen: max. 60 Bilder/s, 3D intern mit 85 % und FSR hochskaliert
+	Engine.max_fps = 60
+	get_viewport().scaling_3d_mode = Viewport.SCALING_3D_MODE_FSR
+	get_viewport().scaling_3d_scale = 0.85
 	_label.position = Vector2(16, 16)
 	_label.add_theme_font_size_override("font_size", 22)
 	var layer := CanvasLayer.new()

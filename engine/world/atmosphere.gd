@@ -65,15 +65,16 @@ func _setup_env() -> void:
 	env.background_mode = Environment.BG_COLOR
 	env.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
 	env.tonemap_mode = Environment.TONE_MAPPER_FILMIC
-	env.tonemap_exposure = 1.05
+	env.tonemap_exposure = 0.92
+	env.tonemap_white = 1.4
 	env.ssao_enabled = true
 	env.ssao_radius = 1.2
 	env.ssao_intensity = 2.2
 	env.ssao_power = 1.6
 	env.glow_enabled = true
-	env.glow_intensity = 0.6
+	env.glow_intensity = 0.42
 	env.glow_bloom = 0.08
-	env.glow_hdr_threshold = 0.95
+	env.glow_hdr_threshold = 1.15
 	env.adjustment_enabled = true
 	env.fog_enabled = true
 	env.fog_height = 1.5             # Bodennebel unterhalb dieser Höhe dichter
@@ -281,7 +282,7 @@ func _apply(_delta: float) -> void:
 	var sun_day := Color(1.0, 0.94, 0.82).lerp(Color(1.0, 0.86, 0.6), warmth * 0.5).lerp(Color(1.0, 0.62, 0.38), dusk)
 	var sun_col := sun_day.lerp(Color(0.55, 0.65, 1.0), night).lerp(Color(0.8, 0.82, 0.88), grau)
 	sun.light_color = sun_col.lerp(Color(0.85, 0.9, 1.0), _flash)
-	sun.light_energy = lerp(0.22, 1.3 + warmth * 0.25, daylight) * (1.0 - grau * 0.7) + _flash * 4.0
+	sun.light_energy = lerp(0.2, 1.0 + warmth * 0.08, daylight) * (1.0 - grau * 0.6) + _flash * 4.0
 
 	var sky_day := Color(0.55, 0.72, 0.95).lerp(Color(0.48, 0.7, 1.0), warmth * 0.4).lerp(Color(0.95, 0.6, 0.45), dusk * 0.7)
 	var storm_sky := Color(0.32, 0.34, 0.4).lerp(Color(0.2, 0.21, 0.26), storm)
@@ -289,8 +290,8 @@ func _apply(_delta: float) -> void:
 	sky = sky.lerp(Color(0.8, 0.85, 1.0), _flash * 0.7)
 	env.background_color = sky
 	env.ambient_light_color = Color(0.75, 0.8, 0.95).lerp(Color(0.25, 0.3, 0.55), night).lerp(Color(0.68, 0.7, 0.75), grau)
-	env.ambient_light_energy = lerp(0.35, 0.55, daylight) + grau * 0.15 + _flash * 1.5
-	env.adjustment_saturation = lerp(1.15 + warmth * 0.08, 0.8, grau)
+	env.ambient_light_energy = lerp(0.32, 0.45, daylight) + grau * 0.18 + _flash * 1.5
+	env.adjustment_saturation = lerp(1.08 + warmth * 0.05, 0.8, grau)
 	env.adjustment_contrast = lerp(1.06, 0.97, grau)
 
 	# Nebel: Fern-Nebel + dichter Bodennebel + volumetrisch (Lichtstrahlen)
