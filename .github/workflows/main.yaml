@@ -42,7 +42,10 @@ jobs:
           COMMIT=$(git rev-parse --short HEAD)
           sed -i -e 's/\(versionName = "\)\(.*\)\("\)/\1\2-licht ('"$COMMIT"')\3/g' buildSrc/src/main/kotlin/AppConfig.kt
           if [ -n "$MELONDS_KEYSTORE" ]; then
-            echo "$MELONDS_KEYSTORE" | base64 -d > ${{ runner.workspace }}/keystore.jks
+            # Leerzeichen/Zeilenumbrüche vom Einfügen am Handy entfernen
+            printf '%s' "$MELONDS_KEYSTORE" | tr -cd 'A-Za-z0-9+/=' | base64 -d > ${{ runner.workspace }}/keystore.jks
+            MELONDS_KEYSTORE_PASSWORD=$(printf '%s' "$MELONDS_KEYSTORE_PASSWORD" | tr -cd 'a-f0-9')
+            keytool -list -keystore ${{ runner.workspace }}/keystore.jks -storepass "$MELONDS_KEYSTORE_PASSWORD" >/dev/null || { echo "::error::Keystore-Secret oder Passwort passt nicht"; exit 1; }
           else
             # Ohne Secret: Wegwerf-Schlüssel. Funktioniert, aber jedes Update muss dann neu installiert werden.
             echo "::warning::Kein MELONDS_KEYSTORE-Secret – APK wird mit Wegwerf-Schlüssel signiert."
