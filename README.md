@@ -13,12 +13,13 @@ Eigene Engine (Godot 4), die Karten aus der **eigenen** HeartGold-/SoulSilver-RO
 - `engine/rom/` – ROM-Dateisystem, NARC, BLZ (ARM9), G3D-Modelle (Displaylisten → Mesh), TEX0-Texturen
 - `engine/world/map_loader.gd` – Kartenkopf-Tabelle (aus ARM9, selbstprüfend über Tileset), Matrix, Kartenblöcke, Gebäude
 - `engine/world/look.gd` – Materialien, Tilt-Shift
-- `engine/world/details.gd` – prozedurale Details: animiertes Wasser auf Wasserkacheln (aus den Kachel-Attributen der ROM), feines Gras nur auf grünem Boden, Farbe aus der Bodentextur darunter, Pollen am Tag, Glühwürmchen nachts, fallende Blätter
+- `engine/world/details.gd` – prozedurale Details: animiertes Wasser auf Wasserkacheln (aus den Kachel-Attributen der ROM), Pollen am Tag, Glühwürmchen nachts, fallende Blätter
 - `engine/world/atmosphere.gd` – Tageszeit (weich), Wetter, Wolkenschatten, Sonnenstrahlen (volumetrischer Nebel), Regen, Lichter an Häusern nachts
 - `engine/tests/load_test.gd` – Headless-Test, gibt nur Zahlen aus
 - Branch `emulator-licht`: früherer Ansatz (WatermelonDS-Fork mit SSAO-Pass)
 
 ## Stand
+- 0.4.2 (01.11.2026): Gras wieder entfernt (sah nicht gut aus).
 - 0.4.1 (01.11.2026): Gras neu – feine, gebogene Halme statt grober Dreiecke, Farbe aus dem Boden darunter, nur wo der Boden grün ist, wie der Boden beleuchtet (keine dunklen Seiten).
 - 0.4 (01.11.2026): Wetter als Mischung (Wolken/Regen/Nebel/Wind/Gewitter/Wärme), 8 Wetterlagen; deutlich stärkerer Nebel mit Bodennebel; Gewitter mit Blitzen; Sturm mit schrägem Regen, mehr Blättern und Gras im Wind; Pfützen, die sich bei Regen bilden, spiegeln und wieder trocknen.
 - 0.3 (01.11.2026): Details – Wasser mit Wellen, Spiegelung, Uferschaum; ~900 Grasbüschel mit Wind (bei Regen stärker); Pollen, Glühwürmchen, Blätter. Alles prozedural erzeugt.

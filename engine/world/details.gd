@@ -1,8 +1,8 @@
 class_name Details
 extends Node3D
 ## Liebe zum Detail – alles prozedural, nichts aus der ROM nachgezeichnet:
-## animiertes Wasser auf Wasserkacheln, feines Gras auf grünem Boden (Farbe aus
-## der Bodentextur darunter), Pollen am Tag, Glühwürmchen nachts, fallende Blätter.
+## animiertes Wasser auf Wasserkacheln, Pollen am Tag, Glühwürmchen nachts,
+## fallende Blätter. (Gras wurde auf Wunsch entfernt.)
 
 const WATER_MIN := 0x10
 const WATER_MAX := 0x1F
@@ -98,15 +98,7 @@ func build(town: Node3D) -> void:
 						var h := _height_at(faces, local)
 						if h > -INF:
 							tree_spots.append(mi.position + Vector3(local.x, h, local.z))
-				elif beh == 0 and blocked == 0:
-					# Gras nur dort, wo der Boden darunter wirklich grün ist (je 2x2 Proben pro Kachel)
-					for q in [Vector3(-0.25, 0, -0.25), Vector3(0.25, 0, -0.25), Vector3(-0.25, 0, 0.25), Vector3(0.25, 0, 0.25)]:
-						var g := _ground(mi, local + q)
-						if g[0] > -INF and _is_green(g[1]):
-							grass_spots.append(mi.position + Vector3(local.x + q.x, g[0], local.z + q.z))
-							grass_cols.append(g[1])
 	_build_water(water_tiles)
-	_build_grass(grass_spots, grass_cols)
 	_build_particles(tree_spots)
 
 
@@ -366,7 +358,6 @@ func _process(_delta: float) -> void:
 	_flies.emitting = on and day < 0.15 and atmo.rain < 0.2
 	_leaves.emitting = on
 	# Wind treibt Gras und Blätter; bei Sturm deutlich mehr
-	_grass_mat.set_shader_parameter("wind", 0.6 + atmo.wind * 2.4)
 	var lpm := _leaves.process_material as ParticleProcessMaterial
 	lpm.gravity = Vector3(0.3 + atmo.wind * 4.0, -0.35, 0.1 + atmo.wind * 1.2)
 	_leaves.amount_ratio = clamp(0.3 + atmo.wind, 0.0, 1.0)

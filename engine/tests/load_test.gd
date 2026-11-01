@@ -31,7 +31,6 @@ func _init() -> void:
 	det.build(town)
 	for c in det.get_children():
 		if c.name == "Wasser": print("Wasser-Dreiecke ", (c as MeshInstance3D).mesh.surface_get_array_len(0) / 3)
-		if c.name == "Gras": print("Grasbüschel ", (c as MultiMeshInstance3D).multimesh.instance_count)
 	det.free()
 	town.free()
 	quit(0 if tris > 0 else 1)
