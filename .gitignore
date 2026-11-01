@@ -1,0 +1,13 @@
+# Niemals Spieldaten ins Repo
+*.nds
+*.zip
+*.narc
+*.nsbmd
+*.nsbtx
+*.png
+*.jpg
+build/
+engine/.godot/
+engine/export/
+*.jks
+*.keystore

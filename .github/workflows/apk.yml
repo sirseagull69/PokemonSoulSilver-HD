@@ -1,0 +1,83 @@
+name: APK bauen
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: apk
+  cancel-in-progress: true
+
+env:
+  GODOT_VERSION: 4.4.1
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v5
+        with:
+          java-version: '17'
+          distribution: temurin
+
+      - name: Android SDK
+        uses: android-actions/setup-android@v3
+        with:
+          packages: 'platform-tools build-tools;34.0.0 platforms;android-34'
+
+      - name: Godot + Export-Vorlagen
+        run: |
+          cd ~
+          curl -sSL -o godot.zip https://github.com/godotengine/godot/releases/download/${GODOT_VERSION}-stable/Godot_v${GODOT_VERSION}-stable_linux.x86_64.zip
+          unzip -q godot.zip && mv Godot_v${GODOT_VERSION}-stable_linux.x86_64 godot
+          curl -sSL -o tpl.tpz https://github.com/godotengine/godot/releases/download/${GODOT_VERSION}-stable/Godot_v${GODOT_VERSION}-stable_export_templates.tpz
+          mkdir -p ~/.local/share/godot/export_templates/${GODOT_VERSION}.stable
+          unzip -q tpl.tpz -d tpl && mv tpl/templates/* ~/.local/share/godot/export_templates/${GODOT_VERSION}.stable/
+
+      - name: Schlüssel
+        env:
+          KS: ${{ secrets.MELONDS_KEYSTORE }}
+          KSPW: ${{ secrets.MELONDS_KEYSTORE_PASSWORD }}
+        run: |
+          KSFILE=${{ runner.temp }}/release.jks
+          if [ -n "$KS" ]; then
+            printf '%s' "$KS" | grep -oE '[A-Za-z0-9+/=]{200,}' | awk '{ print length, $0 }' | sort -rn | head -1 | cut -d' ' -f2 | base64 -d > $KSFILE
+            PW=$(printf '%s' "$KSPW" | grep -oE '[a-f0-9]{32}' | head -1)
+            [ -z "$PW" ] && PW=$(printf '%s' "$KS" | grep -oE '(^|[^A-Za-z0-9+/])[a-f0-9]{32}($|[^A-Za-z0-9+/=])' | grep -oE '[a-f0-9]{32}' | tail -1)
+          else
+            echo "::warning::Kein Keystore-Secret – Wegwerf-Schlüssel"
+            PW=$(openssl rand -hex 16)
+            keytool -genkeypair -keystore $KSFILE -storepass $PW -keypass $PW -alias melonds -keyalg RSA -keysize 2048 -validity 20000 -dname "CN=temp"
+          fi
+          keytool -list -keystore $KSFILE -storepass "$PW" >/dev/null
+          echo "::add-mask::$PW"
+          echo "GODOT_ANDROID_KEYSTORE_RELEASE_PATH=$KSFILE" >> $GITHUB_ENV
+          echo "GODOT_ANDROID_KEYSTORE_RELEASE_USER=melonds" >> $GITHUB_ENV
+          echo "GODOT_ANDROID_KEYSTORE_RELEASE_PASSWORD=$PW" >> $GITHUB_ENV
+
+      - name: Exportieren
+        run: |
+          mkdir -p build
+          cd engine
+          ~/godot --headless --editor --quit-after 2 --path . || true
+          ~/godot --headless --path . --export-release "Android" ../build/SoulSilverHD.apk
+          ls -la ../build
+
+      - name: Release aktualisieren
+        uses: ncipollo/release-action@v1
+        with:
+          allowUpdates: true
+          prerelease: true
+          commit: main
+          tag: latest
+          name: 'SoulSilver HD (aktuell)'
+          body: 'Neuester Build von main. Braucht deine eigene SoulSilver-/HeartGold-ROM auf dem Gerät.'
+          artifacts: build/SoulSilverHD.apk
+          artifactContentType: application/vnd.android.package-archive
+          removeArtifacts: true
