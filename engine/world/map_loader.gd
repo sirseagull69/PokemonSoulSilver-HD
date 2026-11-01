@@ -166,6 +166,11 @@ func load_town(internal_name: String, radius := 1) -> Node3D:
 			mi.name = "Block_%d_%d" % [x, y]
 			mi.mesh = G3d.build_mesh(_land_model(blk), tex, look)
 			mi.position = origin
+			# Kachel-Attribute (32x32, je 2 Byte: Bodenart, Kollision) für Details wie Wasser/Gras
+			var ld := land.files[blk]
+			var ex := ld.decode_u16(0x12)
+			mi.set_meta("tiles", ld.slice(0x14 + ex, 0x14 + ex + ld.decode_u32(0)))
+			mi.add_to_group("land")
 			root.add_child(mi)
 			for b in _land_buildings(blk):
 				if b["id"] >= buildings.files.size():

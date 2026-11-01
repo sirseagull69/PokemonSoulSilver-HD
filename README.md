@@ -13,11 +13,13 @@ Eigene Engine (Godot 4), die Karten aus der **eigenen** HeartGold-/SoulSilver-RO
 - `engine/rom/` – ROM-Dateisystem, NARC, BLZ (ARM9), G3D-Modelle (Displaylisten → Mesh), TEX0-Texturen
 - `engine/world/map_loader.gd` – Kartenkopf-Tabelle (aus ARM9, selbstprüfend über Tileset), Matrix, Kartenblöcke, Gebäude
 - `engine/world/look.gd` – Materialien, Tilt-Shift
+- `engine/world/details.gd` – prozedurale Details: animiertes Wasser auf Wasserkacheln (aus den Kachel-Attributen der ROM), wiegendes Gras an Baumreihen, Pollen am Tag, Glühwürmchen nachts, fallende Blätter
 - `engine/world/atmosphere.gd` – Tageszeit (weich), Wetter, Wolkenschatten, Sonnenstrahlen (volumetrischer Nebel), Regen, Lichter an Häusern nachts
 - `engine/tests/load_test.gd` – Headless-Test, gibt nur Zahlen aus
 - Branch `emulator-licht`: früherer Ansatz (WatermelonDS-Fork mit SSAO-Pass)
 
 ## Stand
+- 0.3 (01.11.2026): Details – Wasser mit Wellen, Spiegelung, Uferschaum; ~900 Grasbüschel mit Wind (bei Regen stärker); Pollen, Glühwürmchen, Blätter. Alles prozedural erzeugt.
 - 0.2 (01.11.2026): Tag/Nacht repariert (wurde vorher ignoriert) und weich überblendet; Wetter mit Y; wandernde Wolkenschatten, Sonnenstrahlen, Regen, Nebel; warme Lichter vor Häusern nachts.
 - 0.1.1 (01.11.2026): ROM-Suche auch auf SD-Karte, wartet auf Dateizugriff, eigener Auswahldialog statt nativem.
 - 0.1 (01.11.2026): Neuborkia + Nachbarblöcke als 3D-Szene, freie Kamera, Licht. Platzhalter statt Spielfigur. Nicht auf dem Thor getestet.

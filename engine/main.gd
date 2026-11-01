@@ -161,6 +161,11 @@ func _start(path: String) -> void:
 	_atmo.follow = _focus
 	add_child(_atmo)
 	_atmo.add_lamps_for(town)
+	var det := Details.new()
+	det.atmo = _atmo
+	det.follow = _focus
+	add_child(det)
+	det.build(town)
 	_cam.attributes = Look.camera_attributes()
 	_cam.fov = 32.0
 	_focus.add_child(_cam)
