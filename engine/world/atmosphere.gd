@@ -1,23 +1,45 @@
 class_name Atmosphere
 extends Node3D
 ## Tageszeit, Wetter und Licht-Stimmung in einem Knoten.
+## Wetter = Mischung aus Wolken, Regen, Nebel, Wind, Gewitter und Wärme.
 ## Alles wird weich überblendet; es gibt nur EINE WorldEnvironment.
 
-enum Wetter { KLAR, WOLKIG, REGEN, NEBEL }
-const WETTER_NAMEN := ["Klar", "Wolkig", "Regen", "Nebel"]
+# Wolken, Regen, Nebel, Wind, Gewitter, Wärme (0..1)
+const PRESETS := [
+	["Sonnig",            [0.05, 0.0, 0.0, 0.2, 0.0, 1.0]],
+	["Klar",              [0.2, 0.0, 0.0, 0.3, 0.0, 0.5]],
+	["Wolkig",            [0.7, 0.0, 0.1, 0.5, 0.0, 0.0]],
+	["Nebel",             [0.5, 0.0, 1.0, 0.1, 0.0, 0.0]],
+	["Nebel + Niesel",    [0.8, 0.35, 0.8, 0.2, 0.0, 0.0]],
+	["Regen",             [0.9, 0.75, 0.25, 0.6, 0.0, 0.0]],
+	["Gewitter",          [1.0, 1.0, 0.3, 0.85, 1.0, 0.0]],
+	["Sturm",             [0.85, 0.5, 0.15, 1.0, 0.3, 0.0]],
+]
 
 var time_of_day := 13.0          # 0..24
 var _target_time := 13.0
-var wetter := Wetter.KLAR
+var preset := 1
 var effects := true
-var _w := [1.0, 0.0, 0.0, 0.0]   # aktuelle Wetter-Gewichte (weich)
+# aktuelle (weich laufende) Werte
+var clouds := 0.2
+var rain := 0.0
+var fog := 0.0
+var wind := 0.3
+var storm := 0.0
+var warmth := 0.5
+var wetness := 0.0               # sammelt sich bei Regen, trocknet danach
 
 var env := Environment.new()
 var _we := WorldEnvironment.new()
 var sun := DirectionalLight3D.new()
 var _clouds := Decal.new()
+var _puddles := Decal.new()
 var _rain := GPUParticles3D.new()
+var _rain_pm := ParticleProcessMaterial.new()
 var _lamps: Array[OmniLight3D] = []
+var _flash := 0.0
+var _next_flash := 4.0
+var _cloud_off := Vector2.ZERO
 var follow: Node3D               # Regen folgt diesem Knoten (Kamera-Fokus)
 
 
@@ -31,8 +53,9 @@ func _ready() -> void:
 	add_child(sun)
 	_setup_env()
 	_setup_clouds()
+	_setup_puddles()
 	_setup_rain()
-	_apply(1.0)
+	_apply(0.0)
 
 
 func _setup_env() -> void:
@@ -50,50 +73,84 @@ func _setup_env() -> void:
 	env.glow_hdr_threshold = 0.95
 	env.adjustment_enabled = true
 	env.fog_enabled = true
-	# Volumetrischer Nebel = sichtbare Sonnenstrahlen zwischen Bäumen und Häusern
+	env.fog_height = 1.5             # Bodennebel unterhalb dieser Höhe dichter
 	env.volumetric_fog_enabled = true
-	env.volumetric_fog_density = 0.012
 	env.volumetric_fog_length = 48.0
 	env.volumetric_fog_detail_spread = 2.0
-	env.volumetric_fog_ambient_inject = 0.15
+	env.volumetric_fog_ambient_inject = 0.25
 	env.volumetric_fog_anisotropy = 0.6
+	env.ssr_max_steps = 48
+	env.ssr_fade_in = 0.1
+	env.ssr_fade_out = 1.5
 
 
-## Wandernde Wolkenschatten: großes Decal mit Rauschen, das langsam driftet.
-func _setup_clouds() -> void:
+static func _noise_tex(freq: float, a: float, b: float, alpha_max: float, size := 512) -> NoiseTexture2D:
 	var noise := FastNoiseLite.new()
 	noise.noise_type = FastNoiseLite.TYPE_SIMPLEX_SMOOTH
-	noise.frequency = 0.006
+	noise.frequency = freq
 	noise.fractal_octaves = 4
 	var grad := Gradient.new()
 	grad.set_color(0, Color(0, 0, 0, 0))
-	grad.set_color(1, Color(0, 0, 0, 1))
-	grad.add_point(0.45, Color(0, 0, 0, 0))
-	grad.add_point(0.62, Color(0, 0, 0, 0.85))
+	grad.set_color(1, Color(0, 0, 0, alpha_max))
+	grad.add_point(a, Color(0, 0, 0, 0))
+	grad.add_point(b, Color(0, 0, 0, alpha_max))
 	var tex := NoiseTexture2D.new()
-	tex.width = 512
-	tex.height = 512
+	tex.width = size
+	tex.height = size
 	tex.seamless = true
 	tex.noise = noise
 	tex.color_ramp = grad
-	_clouds.texture_albedo = tex
+	return tex
+
+
+## Wandernde Wolkenschatten.
+func _setup_clouds() -> void:
+	_clouds.texture_albedo = _noise_tex(0.006, 0.45, 0.62, 0.85)
 	_clouds.size = Vector3(220, 80, 220)
 	_clouds.position = Vector3(0, 20, 0)
-	_clouds.albedo_mix = 1.0
 	_clouds.upper_fade = 0.0
 	_clouds.lower_fade = 0.0
 	add_child(_clouds)
 
 
+## Pfützen: dunkle, glatte Flecken, die bei Nässe auftauchen und spiegeln (SSR).
+func _setup_puddles() -> void:
+	var mask := _noise_tex(0.02, 0.58, 0.66, 0.55, 512)
+	# ORM: R=AO, G=Rauheit, B=Metall – glatt in den Pfützen
+	var orm_noise := FastNoiseLite.new()
+	orm_noise.noise_type = FastNoiseLite.TYPE_SIMPLEX_SMOOTH
+	orm_noise.frequency = 0.02
+	orm_noise.fractal_octaves = 4
+	var og := Gradient.new()
+	og.set_color(0, Color(1, 0.9, 0, 0))
+	og.set_color(1, Color(1, 0.02, 0, 1))
+	og.add_point(0.55, Color(1, 0.6, 0, 0.6))
+	og.add_point(0.62, Color(1, 0.02, 0, 1))
+	var orm := NoiseTexture2D.new()
+	orm.width = 512
+	orm.height = 512
+	orm.seamless = true
+	orm.noise = orm_noise
+	orm.color_ramp = og
+	_puddles.texture_albedo = mask
+	_puddles.texture_orm = orm
+	_puddles.size = Vector3(110, 30, 110)
+	_puddles.position = Vector3(0, 8, 0)
+	_puddles.upper_fade = 0.0
+	_puddles.lower_fade = 0.0
+	_puddles.normal_fade = 0.6       # nur auf flachem Boden, nicht an Wänden
+	_puddles.albedo_mix = 0.6
+	add_child(_puddles)
+
+
 func _setup_rain() -> void:
-	var pm := ParticleProcessMaterial.new()
-	pm.emission_shape = ParticleProcessMaterial.EMISSION_SHAPE_BOX
-	pm.emission_box_extents = Vector3(30, 0.5, 30)
-	pm.direction = Vector3(0.15, -1, 0.05)
-	pm.spread = 3.0
-	pm.initial_velocity_min = 28.0
-	pm.initial_velocity_max = 34.0
-	pm.gravity = Vector3(0, -20, 0)
+	_rain_pm.emission_shape = ParticleProcessMaterial.EMISSION_SHAPE_BOX
+	_rain_pm.emission_box_extents = Vector3(30, 0.5, 30)
+	_rain_pm.direction = Vector3(0.15, -1, 0.05)
+	_rain_pm.spread = 3.0
+	_rain_pm.initial_velocity_min = 28.0
+	_rain_pm.initial_velocity_max = 34.0
+	_rain_pm.gravity = Vector3(0, -20, 0)
 	var drop := QuadMesh.new()
 	drop.size = Vector2(0.03, 0.7)
 	var dm := StandardMaterial3D.new()
@@ -103,16 +160,16 @@ func _setup_rain() -> void:
 	dm.billboard_mode = BaseMaterial3D.BILLBOARD_FIXED_Y
 	drop.material = dm
 	_rain.draw_pass_1 = drop
-	_rain.process_material = pm
-	_rain.amount = 3500
+	_rain.process_material = _rain_pm
+	_rain.amount = 5000
 	_rain.lifetime = 1.2
-	_rain.visibility_aabb = AABB(Vector3(-35, -40, -35), Vector3(70, 45, 70))
+	_rain.visibility_aabb = AABB(Vector3(-40, -40, -40), Vector3(80, 45, 80))
 	_rain.position = Vector3(0, 22, 0)
 	_rain.emitting = false
 	add_child(_rain)
 
 
-## Warme Lichter vor den Gebäuden, nur nachts. Positionen aus den geladenen Gebäuden.
+## Warme Lichter vor den Gebäuden, nur nachts / bei Schlechtwetter.
 func add_lamps_for(town: Node3D) -> void:
 	for c in town.get_children():
 		var mi := c as MeshInstance3D
@@ -120,12 +177,11 @@ func add_lamps_for(town: Node3D) -> void:
 			continue
 		var bb := mi.mesh.get_aabb()
 		if bb.size.x < 3.0 or bb.size.y < 2.0:
-			continue   # nur Häuser, keine Zäune/Schilder
+			continue
 		var l := OmniLight3D.new()
 		l.light_color = Color(1.0, 0.72, 0.4)
 		l.omni_range = 5.5
 		l.light_energy = 0.0
-		l.shadow_enabled = false
 		l.position = mi.position + Vector3(bb.get_center().x, bb.position.y + 1.4, bb.end.z + 0.6)
 		town.add_child(l)
 		_lamps.append(l)
@@ -140,8 +196,12 @@ func is_day() -> bool:
 
 
 func next_weather() -> String:
-	wetter = (wetter + 1) % 4
-	return WETTER_NAMEN[wetter]
+	preset = (preset + 1) % PRESETS.size()
+	return PRESETS[preset][0]
+
+
+func weather_name() -> String:
+	return PRESETS[preset][0]
 
 
 func set_effects(on: bool) -> void:
@@ -152,58 +212,85 @@ func set_effects(on: bool) -> void:
 	env.volumetric_fog_enabled = on
 	sun.shadow_enabled = on
 	_clouds.visible = on
+	_puddles.visible = on
 
 
 func _process(delta: float) -> void:
-	# Zeit weich zum Ziel laufen lassen (~3 s für einen Wechsel)
 	var d := _target_time - time_of_day
 	time_of_day += clamp(d, -delta * 3.0, delta * 3.0)
-	for i in 4:
-		_w[i] = move_toward(_w[i], 1.0 if i == wetter else 0.0, delta * 0.6)
+	var p: Array = PRESETS[preset][1]
+	var k := delta * 0.5
+	clouds = move_toward(clouds, p[0], k)
+	rain = move_toward(rain, p[1], k)
+	fog = move_toward(fog, p[2], k * 0.7)
+	wind = move_toward(wind, p[3], k)
+	storm = move_toward(storm, p[4], k)
+	warmth = move_toward(warmth, p[5], k)
+	# Nässe: steigt bei Regen (~10 s bis nass), trocknet langsam (~1 min)
+	if rain > 0.1:
+		wetness = min(wetness + delta * rain * 0.12, 1.0)
+	else:
+		wetness = max(wetness - delta * 0.018, 0.0)
+	# Blitze
+	_flash = max(_flash - delta * 6.0, 0.0)
+	if storm > 0.5 and effects:
+		_next_flash -= delta
+		if _next_flash <= 0.0:
+			_flash = 1.0
+			_next_flash = randf_range(2.5, 9.0)
+		elif _next_flash < 0.12 and _next_flash > 0.05:
+			_flash = max(_flash, 0.6)   # Doppelblitz
 	if follow:
 		_rain.global_position = follow.global_position + Vector3(0, 22, 0)
-	_clouds.position.x = fmod(_clouds.position.x + delta * 1.4, 220.0)
-	_clouds.position.z = fmod(_clouds.position.z + delta * 0.6, 220.0)
+	_cloud_off += Vector2(1.4, 0.6) * (0.5 + wind * 3.0) * delta
+	_clouds.position.x = fmod(_cloud_off.x, 220.0)
+	_clouds.position.z = fmod(_cloud_off.y, 220.0)
 	_apply(delta)
 
 
 func _apply(_delta: float) -> void:
-	# Tageslicht 0 (Nacht) .. 1 (Mittag), mit Dämmerung
 	var t := time_of_day
 	var daylight: float = clamp(sin((t - 6.0) / 12.0 * PI), 0.0, 1.0)
-	var dusk: float = clamp(1.0 - abs(daylight - 0.25) * 4.0, 0.0, 1.0)   # Abend-/Morgenrot
+	var dusk: float = clamp(1.0 - abs(daylight - 0.25) * 4.0, 0.0, 1.0)
 	var night := 1.0 - daylight
+	var grau: float = clamp(clouds * 0.45 + rain * 0.5 + fog * 0.4 + storm * 0.3, 0.0, 1.0)
 
-	var wolkig: float = _w[1]
-	var regen: float = _w[2]
-	var nebel: float = _w[3]
-	var grau: float = clamp(wolkig * 0.5 + regen * 0.9 + nebel * 0.6, 0.0, 1.0)
-
-	# Sonne: Winkel folgt der Uhrzeit, nachts Mondlicht
 	var elev: float = lerp(8.0, 58.0, daylight)
 	sun.rotation_degrees = Vector3(-elev, -35.0 + (t - 12.0) * 6.0, 0)
-	var sun_day := Color(1.0, 0.94, 0.82).lerp(Color(1.0, 0.62, 0.38), dusk)
-	var sun_col := sun_day.lerp(Color(0.55, 0.65, 1.0), night)
-	sun.light_color = sun_col.lerp(Color(0.8, 0.82, 0.88), grau)
-	sun.light_energy = lerp(0.22, 1.3, daylight) * (1.0 - grau * 0.65)
+	var sun_day := Color(1.0, 0.94, 0.82).lerp(Color(1.0, 0.86, 0.6), warmth * 0.5).lerp(Color(1.0, 0.62, 0.38), dusk)
+	var sun_col := sun_day.lerp(Color(0.55, 0.65, 1.0), night).lerp(Color(0.8, 0.82, 0.88), grau)
+	sun.light_color = sun_col.lerp(Color(0.85, 0.9, 1.0), _flash)
+	sun.light_energy = lerp(0.22, 1.3 + warmth * 0.25, daylight) * (1.0 - grau * 0.7) + _flash * 4.0
 
-	var sky_day := Color(0.55, 0.72, 0.95).lerp(Color(0.95, 0.6, 0.45), dusk * 0.7)
-	var sky := sky_day.lerp(Color(0.04, 0.06, 0.14), night).lerp(Color(0.5, 0.53, 0.58) * (0.3 + daylight * 0.7), grau)
+	var sky_day := Color(0.55, 0.72, 0.95).lerp(Color(0.48, 0.7, 1.0), warmth * 0.4).lerp(Color(0.95, 0.6, 0.45), dusk * 0.7)
+	var storm_sky := Color(0.32, 0.34, 0.4).lerp(Color(0.2, 0.21, 0.26), storm)
+	var sky := sky_day.lerp(Color(0.04, 0.06, 0.14), night).lerp(storm_sky * (0.35 + daylight * 0.65), grau)
+	sky = sky.lerp(Color(0.8, 0.85, 1.0), _flash * 0.7)
 	env.background_color = sky
-	env.ambient_light_color = Color(0.75, 0.8, 0.95).lerp(Color(0.25, 0.3, 0.55), night).lerp(Color(0.7, 0.72, 0.76), grau)
-	env.ambient_light_energy = lerp(0.35, 0.55, daylight) + grau * 0.15
-	env.adjustment_saturation = lerp(1.15, 0.85, grau)
-	env.adjustment_contrast = lerp(1.06, 0.98, grau)
+	env.ambient_light_color = Color(0.75, 0.8, 0.95).lerp(Color(0.25, 0.3, 0.55), night).lerp(Color(0.68, 0.7, 0.75), grau)
+	env.ambient_light_energy = lerp(0.35, 0.55, daylight) + grau * 0.15 + _flash * 1.5
+	env.adjustment_saturation = lerp(1.15 + warmth * 0.08, 0.8, grau)
+	env.adjustment_contrast = lerp(1.06, 0.97, grau)
 
-	env.fog_light_color = sky
-	env.fog_density = 0.004 + nebel * 0.03 + regen * 0.01
-	env.volumetric_fog_density = 0.012 + nebel * 0.03 + regen * 0.01
+	# Nebel: Fern-Nebel + dichter Bodennebel + volumetrisch (Lichtstrahlen)
+	env.fog_light_color = sky.lerp(Color(0.8, 0.82, 0.86), fog * 0.5)
+	env.fog_density = 0.003 + fog * 0.055 + rain * 0.012
+	env.fog_height_density = fog * 0.9
+	env.fog_aerial_perspective = 0.3
+	env.volumetric_fog_density = 0.01 + fog * 0.06 + rain * 0.012
 	env.volumetric_fog_albedo = Color(0.9, 0.92, 1.0)
 
-	_clouds.modulate = Color(1, 1, 1, clamp(0.18 + wolkig * 0.45 + regen * 0.3, 0.0, 0.75) * daylight)
-	_rain.emitting = regen > 0.3 and effects
-	_rain.amount_ratio = clamp(regen, 0.05, 1.0)
+	_clouds.modulate = Color(1, 1, 1, clamp(0.1 + clouds * 0.6, 0.0, 0.8) * daylight)
 
-	var lamp_e: float = clamp(night * 1.6 + grau * 0.4, 0.0, 1.6)
+	# Regen: Menge, Schräglage durch Wind
+	_rain.emitting = rain > 0.15 and effects
+	_rain.amount_ratio = clamp(rain, 0.05, 1.0)
+	_rain_pm.direction = Vector3(0.15 + wind * 0.9, -1, 0.05 + wind * 0.3)
+
+	# Pfützen + spiegelnder Boden
+	_puddles.modulate = Color(1, 1, 1, wetness)
+	env.ssr_enabled = effects and wetness > 0.15
+
+	var lamp_e: float = clamp(night * 1.6 + grau * 0.5, 0.0, 1.6)
 	for l in _lamps:
 		l.light_energy = lamp_e

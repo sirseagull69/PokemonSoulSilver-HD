@@ -7,7 +7,7 @@ Eigene Engine (Godot 4), die Karten aus der **eigenen** HeartGold-/SoulSilver-RO
 ## Benutzen
 1. APK aus dem Release `latest` installieren.
 2. SoulSilver-/HeartGold-ROM (`.nds`) in `ROMs`, `Download` oder `Documents` legen – oder beim Start auswählen. Beim ersten Start „Zugriff auf alle Dateien“ erlauben.
-3. Steuerung: linker Stick bewegen, rechter Stick drehen/zoomen, **A** Tag/Nacht, **Y** Wetter (klar/wolkig/Regen/Nebel), **B** Effekte an/aus.
+3. Steuerung: linker Stick bewegen, rechter Stick drehen/zoomen, **A** Tag/Nacht, **Y** Wetter (Sonnig, Klar, Wolkig, Nebel, Nebel + Niesel, Regen, Gewitter, Sturm), **B** Effekte an/aus.
 
 ## Aufbau
 - `engine/rom/` – ROM-Dateisystem, NARC, BLZ (ARM9), G3D-Modelle (Displaylisten → Mesh), TEX0-Texturen
@@ -19,6 +19,7 @@ Eigene Engine (Godot 4), die Karten aus der **eigenen** HeartGold-/SoulSilver-RO
 - Branch `emulator-licht`: früherer Ansatz (WatermelonDS-Fork mit SSAO-Pass)
 
 ## Stand
+- 0.4 (01.11.2026): Wetter als Mischung (Wolken/Regen/Nebel/Wind/Gewitter/Wärme), 8 Wetterlagen; deutlich stärkerer Nebel mit Bodennebel; Gewitter mit Blitzen; Sturm mit schrägem Regen, mehr Blättern und Gras im Wind; Pfützen, die sich bei Regen bilden, spiegeln und wieder trocknen.
 - 0.3 (01.11.2026): Details – Wasser mit Wellen, Spiegelung, Uferschaum; ~900 Grasbüschel mit Wind (bei Regen stärker); Pollen, Glühwürmchen, Blätter. Alles prozedural erzeugt.
 - 0.2 (01.11.2026): Tag/Nacht repariert (wurde vorher ignoriert) und weich überblendet; Wetter mit Y; wandernde Wolkenschatten, Sonnenstrahlen, Regen, Nebel; warme Lichter vor Häusern nachts.
 - 0.1.1 (01.11.2026): ROM-Suche auch auf SD-Karte, wartet auf Dateizugriff, eigener Auswahldialog statt nativem.

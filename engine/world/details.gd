@@ -292,7 +292,7 @@ func _build_particles(tree_spots: Array[Vector3]) -> void:
 	_leaves = GPUParticles3D.new()
 	_leaves.draw_pass_1 = leaf
 	_leaves.process_material = pm
-	_leaves.amount = 60
+	_leaves.amount = 160
 	_leaves.lifetime = 9.0
 	_leaves.preprocess = 9.0
 	_leaves.visibility_aabb = AABB(Vector3(-60, -10, -60), Vector3(120, 30, 120))
@@ -307,8 +307,11 @@ func _process(_delta: float) -> void:
 	if follow:
 		_pollen.global_position = follow.global_position + Vector3(0, 1.5, 0)
 		_flies.global_position = follow.global_position + Vector3(0, 0.8, 0)
-	_pollen.emitting = on and day > 0.3 and atmo.wetter != Atmosphere.Wetter.REGEN
-	_flies.emitting = on and day < 0.15 and atmo.wetter != Atmosphere.Wetter.REGEN
+	_pollen.emitting = on and day > 0.3 and atmo.rain < 0.2 and atmo.fog < 0.6
+	_flies.emitting = on and day < 0.15 and atmo.rain < 0.2
 	_leaves.emitting = on
-	var wind := 1.0 + (1.5 if atmo.wetter == Atmosphere.Wetter.REGEN else 0.0)
-	_grass_mat.set_shader_parameter("wind", wind)
+	# Wind treibt Gras und Blätter; bei Sturm deutlich mehr
+	_grass_mat.set_shader_parameter("wind", 0.6 + atmo.wind * 2.4)
+	var lpm := _leaves.process_material as ParticleProcessMaterial
+	lpm.gravity = Vector3(0.3 + atmo.wind * 4.0, -0.35, 0.1 + atmo.wind * 1.2)
+	_leaves.amount_ratio = clamp(0.3 + atmo.wind, 0.0, 1.0)
