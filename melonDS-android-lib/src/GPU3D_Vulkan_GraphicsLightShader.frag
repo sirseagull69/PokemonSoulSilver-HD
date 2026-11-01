@@ -4,6 +4,11 @@
 // Läuft im Final-Pass nach Kantenmarkierung/Nebel und dunkelt nur ab
 // (Ausgabe schwarz, Deckkraft = Verdeckung). Stärke 0..100 kommt über
 // pc.passIndex, 0 = Pass wird gar nicht ausgeführt.
+//
+// Gemessen wird pro gegenüberliegendem Stichproben-Paar die Krümmung der
+// Tiefe: auf einer Ebene ist d = Mittel der beiden Nachbarn (kein Schatten),
+// in einer Innenecke liegt d dahinter. Das Maß ist skalenfrei, funktioniert
+// also mit Z- und W-Buffer. Große Sprünge (Silhouetten) werden verworfen.
 
 layout(set = 0, binding = 3) uniform sampler2D AttrBuffer;
 layout(set = 0, binding = 4) uniform sampler2D DepthBuffer;
@@ -31,18 +36,21 @@ layout(push_constant) uniform PushConsts
 
 layout(location = 0) out vec4 oColor;
 
-// 12 Richtungen, zwei Ringe. Feste Werte statt Rauschen, damit nichts flimmert.
-const vec2 kDirs[12] = vec2[12](
-    vec2( 1.000,  0.000), vec2( 0.500,  0.866), vec2(-0.500,  0.866),
-    vec2(-1.000,  0.000), vec2(-0.500, -0.866), vec2( 0.500, -0.866),
-    vec2( 0.866,  0.500), vec2( 0.000,  1.000), vec2(-0.866,  0.500),
-    vec2(-0.866, -0.500), vec2( 0.000, -1.000), vec2( 0.866, -0.500)
+// 3 Paare pro Ring (je 60° versetzt), Ring 2 um 30° gedreht. Fest, damit nichts flimmert.
+const vec2 kDirs[6] = vec2[6](
+    vec2(1.000, 0.000), vec2(0.500, 0.866), vec2(-0.500, 0.866),
+    vec2(0.866, 0.500), vec2(0.000, 1.000), vec2(-0.866, 0.500)
 );
 
-float loadDepth(ivec2 c, ivec2 size)
+bool loadDepth(ivec2 c, ivec2 size, float farDepth, out float depth)
 {
-    c = clamp(c, ivec2(0), size - ivec2(1));
-    return texelFetch(DepthBuffer, c, 0).r;
+    if (any(lessThan(c, ivec2(0))) || any(greaterThanEqual(c, size)))
+    {
+        depth = 1.0;
+        return false;
+    }
+    depth = texelFetch(DepthBuffer, c, 0).r;
+    return depth < farDepth - 1e-6;
 }
 
 void main()
@@ -51,48 +59,43 @@ void main()
     ivec2 size = ivec2(int(pc.width), int(pc.height));
     ivec2 coord = ivec2(gl_FragCoord.xy);
 
-    float d = loadDepth(coord, size);
-    float farDepth = float(pc.clearDepth & 0xFFFFFFu) * (1.0 / 16777216.0);
+    float farDepth = min(float(pc.clearDepth & 0xFFFFFFu) * (1.0 / 16777216.0), 0.9999);
+    float d = texelFetch(DepthBuffer, coord, 0).r;
 
     // Hintergrund (nichts gezeichnet) bekommt keinen Schatten.
-    if (d >= 0.9999 || d >= farDepth - 1e-6)
+    if (d >= farDepth - 1e-6)
     {
         oColor = vec4(0.0);
         return;
     }
 
     float scale = max(float(pc.width) / 256.0, 1.0);
-    // Erlaubte Tiefendifferenz: kleiner Bereich = Ecken/Kontakt, großer Sprung = Silhouette (ignorieren)
-    float minDelta = 0.0004 + d * 0.0006;
-    float maxDelta = 0.02 + d * 0.04;
-
     float occ = 0.0;
     float weight = 0.0;
-    for (int i = 0; i < 12; i++)
+
+    for (int k = 0; k < 6; k++)
     {
-        float radius = (i < 6 ? 3.0 : 7.0) * scale;
-        ivec2 sc = coord + ivec2(round(kDirs[i] * radius));
-        float sd = loadDepth(sc, size);
-        if (sd >= farDepth - 1e-6)
-            continue;
-        float delta = d - sd; // > 0: Nachbar liegt näher an der Kamera
-        float w = i < 6 ? 1.0 : 0.6;
+        float radius = (k < 3 ? 3.0 : 7.0) * scale;
+        float w = k < 3 ? 1.0 : 0.6;
+        ivec2 o = ivec2(round(kDirs[k] * radius));
         weight += w;
-        if (delta > minDelta && delta < maxDelta)
-        {
-            // weich ein- und am Rand des Bereichs wieder ausblenden
-            float t = (delta - minDelta) / (maxDelta - minDelta);
-            occ += w * smoothstep(0.0, 0.15, t) * (1.0 - smoothstep(0.6, 1.0, t));
-        }
+
+        float s1, s2;
+        if (!loadDepth(coord + o, size, farDepth, s1) || !loadDepth(coord - o, size, farDepth, s2))
+            continue;
+
+        float a1 = abs(d - s1);
+        float a2 = abs(d - s2);
+        // Silhouette: ein Nachbar springt viel stärker als der andere -> ignorieren
+        if (max(a1, a2) >= 6.0 * min(a1, a2) + 2e-5)
+            continue;
+
+        float delta = d - 0.5 * (s1 + s2);
+        float r = delta / (0.5 * abs(s1 - s2) + abs(delta) + 1e-7);
+        occ += w * smoothstep(0.15, 0.6, r);
     }
 
-    if (weight <= 0.0)
-    {
-        oColor = vec4(0.0);
-        return;
-    }
-
-    float ao = clamp(occ / weight, 0.0, 1.0);
+    float ao = clamp(occ / max(weight, 1e-6), 0.0, 1.0);
     ao = ao * ao * (3.0 - 2.0 * ao);
-    oColor = vec4(0.0, 0.0, 0.0, ao * 0.55 * strength);
+    oColor = vec4(0.0, 0.0, 0.0, ao * 0.8 * strength);
 }

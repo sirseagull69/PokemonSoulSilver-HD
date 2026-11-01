@@ -13,7 +13,11 @@ Jeder Push auf `main` baut per GitHub Actions eine signierte APK → Release `li
 
 Basis: WatermelonDS `9bd6a0d` (16.10.2026), melonDS-android-lib fest eingebunden statt Submodul.
 
+## Simulation
+`tools/sim/` rendert eine nachgebaute Stadtszene mit Tiefenpuffer (W- oder Z-Buffer) und wendet denselben Algorithmus an: `python3 sim.py w && python3 ssao.py vergleich.png`. Gut, um Schwellen zu prüfen, bevor es aufs Thor geht.
+
 ## Stand
+- 0.2 (01.11.2026): SSAO skalenfrei über gegenüberliegende Paare (vorher dunkelte der ganze Boden ab, helle Ränder um Objekte – in der Simulation gefunden). Effekt kräftiger.
 - 0.1 (01.11.2026): SSAO-Pass, Einstellungen. Nicht auf dem Thor getestet.
 
 ---
