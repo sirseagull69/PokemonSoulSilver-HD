@@ -15,6 +15,12 @@ window/handheld/orientation=0
 
 [rendering]
 
+environment/volumetric_fog/volume_size=48
+environment/volumetric_fog/volume_depth=32
+environment/ssao/quality=1
+environment/ssao/half_size=true
+environment/glow/upscale_mode=0
+
 renderer/rendering_method="forward_plus"
 renderer/rendering_method.mobile="forward_plus"
 textures/vram_compression/import_etc2_astc=true

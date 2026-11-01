@@ -19,6 +19,7 @@ Eigene Engine (Godot 4), die Karten aus der **eigenen** HeartGold-/SoulSilver-RO
 - Branch `emulator-licht`: früherer Ansatz (WatermelonDS-Fork mit SSAO-Pass)
 
 ## Stand
+- 0.4.3 (01.11.2026): Flüssiger bei Regen/Gewitter – keine Bildschirm-Spiegelung mehr (Pfützen glänzen trotzdem), weniger Regentropfen, kleineres Nebelgitter, SSAO in halber Auflösung, automatische Qualität nach Bildrate.
 - 0.4.2 (01.11.2026): Gras wieder entfernt (sah nicht gut aus).
 - 0.4.1 (01.11.2026): Gras neu – feine, gebogene Halme statt grober Dreiecke, Farbe aus dem Boden darunter, nur wo der Boden grün ist, wie der Boden beleuchtet (keine dunklen Seiten).
 - 0.4 (01.11.2026): Wetter als Mischung (Wolken/Regen/Nebel/Wind/Gewitter/Wärme), 8 Wetterlagen; deutlich stärkerer Nebel mit Bodennebel; Gewitter mit Blitzen; Sturm mit schrägem Regen, mehr Blättern und Gras im Wind; Pfützen, die sich bei Regen bilden, spiegeln und wieder trocknen.

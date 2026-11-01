@@ -41,6 +41,9 @@ var _flash := 0.0
 var _next_flash := 4.0
 var _cloud_off := Vector2.ZERO
 var follow: Node3D               # Regen folgt diesem Knoten (Kamera-Fokus)
+var quality := 2                 # 2 = voll, 1 = mittel, 0 = sparsam (automatisch)
+var _fps_low := 0.0
+var _fps_high := 0.0
 
 
 func _ready() -> void:
@@ -145,14 +148,14 @@ func _setup_puddles() -> void:
 
 func _setup_rain() -> void:
 	_rain_pm.emission_shape = ParticleProcessMaterial.EMISSION_SHAPE_BOX
-	_rain_pm.emission_box_extents = Vector3(30, 0.5, 30)
+	_rain_pm.emission_box_extents = Vector3(22, 0.5, 22)
 	_rain_pm.direction = Vector3(0.15, -1, 0.05)
 	_rain_pm.spread = 3.0
 	_rain_pm.initial_velocity_min = 28.0
 	_rain_pm.initial_velocity_max = 34.0
 	_rain_pm.gravity = Vector3(0, -20, 0)
 	var drop := QuadMesh.new()
-	drop.size = Vector2(0.03, 0.7)
+	drop.size = Vector2(0.035, 0.9)
 	var dm := StandardMaterial3D.new()
 	dm.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
 	dm.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
@@ -161,11 +164,12 @@ func _setup_rain() -> void:
 	drop.material = dm
 	_rain.draw_pass_1 = drop
 	_rain.process_material = _rain_pm
-	_rain.amount = 5000
+	_rain.amount = 1800
 	_rain.lifetime = 1.2
 	_rain.visibility_aabb = AABB(Vector3(-40, -40, -40), Vector3(80, 45, 80))
 	_rain.position = Vector3(0, 22, 0)
 	_rain.emitting = false
+	_rain.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	add_child(_rain)
 
 
@@ -215,7 +219,24 @@ func set_effects(on: bool) -> void:
 	_puddles.visible = on
 
 
+func _auto_quality(delta: float) -> void:
+	var fps := Engine.get_frames_per_second()
+	if fps > 0 and fps < 48:
+		_fps_low += delta
+		_fps_high = 0.0
+	elif fps >= 58:
+		_fps_high += delta
+		_fps_low = 0.0
+	if _fps_low > 1.5 and quality > 0:
+		quality -= 1
+		_fps_low = 0.0
+	elif _fps_high > 12.0 and quality < 2:
+		quality += 1
+		_fps_high = 0.0
+
+
 func _process(delta: float) -> void:
+	_auto_quality(delta)
 	var d := _target_time - time_of_day
 	time_of_day += clamp(d, -delta * 3.0, delta * 3.0)
 	var p: Array = PRESETS[preset][1]
@@ -284,12 +305,15 @@ func _apply(_delta: float) -> void:
 
 	# Regen: Menge, Schräglage durch Wind
 	_rain.emitting = rain > 0.15 and effects
-	_rain.amount_ratio = clamp(rain, 0.05, 1.0)
+	_rain.amount_ratio = clamp(rain, 0.05, 1.0) * [0.45, 0.75, 1.0][quality]
+	# Volumetrischer Nebel ist bei Regen am teuersten: sparsam -> aus, normaler Nebel bleibt
+	env.volumetric_fog_enabled = effects and quality > 0
+	env.ssao_enabled = effects and quality > 0
 	_rain_pm.direction = Vector3(0.15 + wind * 0.9, -1, 0.05 + wind * 0.3)
 
 	# Pfützen + spiegelnder Boden
 	_puddles.modulate = Color(1, 1, 1, wetness)
-	env.ssr_enabled = effects and wetness > 0.15
+	env.ssr_enabled = false
 
 	var lamp_e: float = clamp(night * 1.6 + grau * 0.5, 0.0, 1.6)
 	for l in _lamps:
