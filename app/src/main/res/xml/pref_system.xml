@@ -1,0 +1,128 @@
+<?xml version="1.0" encoding="utf-8"?>
+<PreferenceScreen
+        xmlns:android="http://schemas.android.com/apk/res/android"
+        xmlns:app="http://schemas.android.com/apk/res-auto">
+
+    <Preference
+            android:key="internal_firmware_settings"
+            android:title="@string/internal_firmware_settings"
+            android:summary="@string/internal_firmware_settings_summary"
+            app:iconSpaceReserved="false"
+            android:fragment="me.magnum.melonds.ui.settings.fragments.FirmwarePreferencesFragment" />
+
+    <Preference
+            android:title="@string/custom_bios_firmware"
+            app:iconSpaceReserved="false"
+            android:fragment="me.magnum.melonds.ui.settings.fragments.CustomFirmwarePreferencesFragment" />
+
+    <SwitchPreference
+            android:key="sync_rtc_on_resume"
+            android:title="@string/sync_rtc_on_resume"
+            android:summary="@string/sync_rtc_on_resume_summary"
+            app:iconSpaceReserved="false"
+            android:defaultValue="true" />
+
+    <Preference
+            android:key="rtc_offset_minutes"
+            android:title="@string/emulated_clock"
+            app:iconSpaceReserved="false" />
+
+    <SwitchPreference
+            android:key="enable_jit"
+            android:title="@string/enable_jit"
+            android:summary="@string/enable_jit_summary"
+            app:iconSpaceReserved="false"
+            android:defaultValue="true" />
+
+    <ListPreference
+            android:key="frameskip_mode"
+            android:title="@string/frameskip_mode"
+            android:summary="@string/frameskip_mode_summary"
+            app:iconSpaceReserved="false"
+            android:defaultValue="auto"
+            android:entries="@array/frameskip_mode_options"
+            android:entryValues="@array/frameskip_mode_values" />
+
+    <ListPreference
+            android:key="frameskip_manual_value"
+            android:title="@string/frameskip_manual_value"
+            app:iconSpaceReserved="false"
+            android:defaultValue="1"
+            android:entries="@array/frameskip_manual_value_options"
+            android:entryValues="@array/frameskip_manual_value_values" />
+
+    <SwitchPreference
+            android:key="save_internal_config_as_file"
+            android:title="@string/save_internal_config_as_file"
+            android:summary="@string/save_internal_config_as_file_summary"
+            app:iconSpaceReserved="false"
+            android:defaultValue="false" />
+
+    <SwitchPreference
+            android:key="system_app_log_file_enabled"
+            android:title="@string/system_app_log_file_enabled"
+            android:summary="@string/system_app_log_file_enabled_summary"
+            app:iconSpaceReserved="false"
+            android:defaultValue="false" />
+
+    <SwitchPreference
+            android:key="system_dldi_sd_card_enabled"
+            android:title="@string/system_dldi_sd_card_enabled"
+            android:summary="@string/system_dldi_sd_card_enabled_summary"
+            app:iconSpaceReserved="false"
+            android:defaultValue="false" />
+
+    <me.magnum.melonds.ui.settings.preferences.StoragePickerPreference
+            android:key="system_dldi_sd_card_dir"
+            android:title="@string/system_dldi_sd_card_dir"
+            android:summary="@string/not_set"
+            app:iconSpaceReserved="false"
+            app:selection="single"
+            app:type="directory"
+            app:permissions="read_write"
+            app:persistPermissions="true" />
+
+    <ListPreference
+            android:key="system_dldi_sd_card_image_size"
+            android:title="@string/system_dldi_sd_card_image_size"
+            app:iconSpaceReserved="false"
+            android:defaultValue="0"
+            android:entries="@array/dldi_sd_card_image_size_options"
+            android:entryValues="@array/dldi_sd_card_image_size_values" />
+
+    <SwitchPreference
+            android:key="system_disable_touch_gestures_on_touch_screen_area"
+            android:title="@string/system_disable_touch_gestures_on_touch_screen_area"
+            android:summary="@string/system_disable_touch_gestures_on_touch_screen_area_summary"
+            app:iconSpaceReserved="false"
+            android:defaultValue="false" />
+
+    <SwitchPreference
+            android:key="system_ignore_display_cutout_in_layouts"
+            android:title="@string/system_ignore_display_cutout_in_layouts"
+            android:summary="@string/system_ignore_display_cutout_in_layouts_summary"
+            app:iconSpaceReserved="false"
+            android:defaultValue="false" />
+
+    <Preference
+            android:key="backup_internal_layout"
+            android:title="@string/backup_internal_layout"
+            app:isPreferenceVisible="@bool/settings_backup_restore_enabled"
+            app:iconSpaceReserved="false" />
+
+    <Preference
+            android:key="backup_external_layout"
+            android:title="@string/backup_external_layout"
+            app:iconSpaceReserved="false" />
+
+    <Preference
+            android:key="restore_internal_layout"
+            android:title="@string/restore_internal_layout"
+            app:isPreferenceVisible="@bool/settings_backup_restore_enabled"
+            app:iconSpaceReserved="false" />
+
+    <Preference
+            android:key="restore_external_layout"
+            android:title="@string/restore_external_layout"
+            app:iconSpaceReserved="false" />
+</PreferenceScreen>

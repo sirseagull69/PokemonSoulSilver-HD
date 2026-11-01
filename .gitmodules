@@ -1,0 +1,12 @@
+[submodule "app/src/main/cpp/oboe"]
+	path = app/src/main/cpp/oboe
+	url = https://github.com/google/oboe.git
+[submodule "app/src/main/cpp/faad2"]
+	path = app/src/main/cpp/faad2
+	url = https://github.com/knik0/faad2.git
+[submodule "app/src/main/cpp/enet"]
+	path = app/src/main/cpp/enet
+	url = https://github.com/lsalzman/enet.git
+[submodule "app/src/main/cpp/zstd"]
+	path = app/src/main/cpp/zstd
+	url = https://github.com/facebook/zstd.git

@@ -1,0 +1,72 @@
+package me.magnum.melonds.domain.model.retroachievements
+
+sealed class RAEvent {
+    data class OnAchievementPrimed(val achievementId: Long) : RAEvent()
+    data class OnAchievementUnPrimed(val achievementId: Long) : RAEvent()
+    data class OnAchievementTriggered(val achievementId: Long) : RAEvent()
+    data class OnAchievementProgressUpdated(val achievementId: Long, val current: Int, val target: Int, val progress: String) : RAEvent()
+    data class OnGameCompleted(val subsetId: Long) : RAEvent()
+    data class OnSubsetCompleted(val subsetId: Long) : RAEvent()
+    data class OnServerError(val api: String, val relatedId: Long, val resultCode: Int, val message: String) : RAEvent()
+    data object OnDisconnected : RAEvent()
+    data object OnReconnected : RAEvent()
+    data class OnLeaderboardAttemptStarted(val leaderboardId: Long, val attemptId: Long, val eventSequence: Long) : RAEvent()
+    data class OnLeaderboardAttemptUpdated(
+        val leaderboardId: Long,
+        val attemptId: Long,
+        val eventSequence: Long,
+        val formattedValue: String,
+        val trackerShown: Boolean = false,
+    ) : RAEvent()
+    data class OnLeaderboardAttemptSubmitted(
+        val leaderboardId: Long,
+        val attemptId: Long,
+        val eventSequence: Long,
+        val trackerDisplay: String,
+    ) : RAEvent()
+    data class OnLeaderboardScoreboard(
+        val leaderboardId: Long,
+        val attemptId: Long,
+        val eventSequence: Long,
+        val submittedScore: String,
+        val bestScore: String,
+        val newRank: Long,
+        val numEntries: Long,
+    ) : RAEvent()
+    data class OnLeaderboardSubmissionFailed(
+        val leaderboardId: Long,
+        val attemptId: Long,
+        val eventSequence: Long,
+        val resultCode: Int,
+        val message: String,
+    ) : RAEvent()
+    data class OnLeaderboardRuntimeReset(val attemptFloor: Long) : RAEvent()
+    data class OnLeaderboardAttemptCompleted(val leaderboardId: Long, val value: Int, val formattedValue: String) : RAEvent()
+    data class OnLeaderboardAttemptCancelled(val leaderboardId: Long, val attemptId: Long, val eventSequence: Long) : RAEvent()
+    data class OnAchievementProgressHidden(val achievementId: Long) : RAEvent()
+    data class OnLeaderboardTrackerHidden(val leaderboardId: Long, val attemptId: Long, val eventSequence: Long) : RAEvent()
+    data class OnPendingSubmissionAdded(
+        val submissionSessionId: Long,
+        val nativeSubmissionId: Long,
+        val sequence: Long,
+        val createdAtEpochMs: Long,
+        val submissionType: RaNativePendingSubmissionType,
+        val achievementId: Long,
+        val leaderboardId: Long,
+        val attemptId: Long,
+        val rawScore: Int,
+        val hardcore: Boolean,
+        val formattedScore: String,
+    ) : RAEvent()
+    data class OnPendingSubmissionResolved(
+        val submissionSessionId: Long,
+        val nativeSubmissionId: Long,
+        val submissionType: RaNativePendingSubmissionType,
+        val resolution: RaNativePendingSubmissionResolution,
+        val resultCode: Int,
+    ) : RAEvent()
+    data class OnPendingSubmissionBarrier(
+        val submissionSessionId: Long,
+        val barrierId: Long,
+    ) : RAEvent()
+}

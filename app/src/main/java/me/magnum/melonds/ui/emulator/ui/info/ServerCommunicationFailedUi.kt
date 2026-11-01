@@ -1,0 +1,81 @@
+package me.magnum.melonds.ui.emulator.ui.info
+
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.Animatable
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.padding
+import androidx.compose.material.MaterialTheme
+import androidx.compose.material.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.platform.LocalResources
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
+import androidx.core.content.res.ResourcesCompat
+import kotlinx.coroutines.delay
+import me.magnum.melonds.R
+import me.magnum.melonds.ui.emulator.ui.AchievementInfo
+import kotlin.time.Duration.Companion.milliseconds
+import kotlin.time.Duration.Companion.seconds
+
+@Composable
+internal fun ServerCommunicationFailedUi(errorInfo: AchievementInfo.ServerCommunicationFailed) {
+    val alphaTransition = remember(errorInfo.source, errorInfo.willRetryInBackground) { Animatable(1f) }
+    var isDescriptionVisible by remember(errorInfo.source, errorInfo.willRetryInBackground) { mutableStateOf(false) }
+
+    AchievementInfoUi(
+        modifier = Modifier.padding(8.dp).graphicsLayer {
+            alpha = alphaTransition.value
+        },
+        iconData = ResourcesCompat.getDrawable(LocalResources.current, R.drawable.ic_ra_error, null)!!,
+        state = errorInfo.state,
+        accentColor = RaFailureColor,
+    ) {
+        LaunchedEffect(errorInfo.source, errorInfo.willRetryInBackground) {
+            delay(500.milliseconds)
+            isDescriptionVisible = true
+            delay(3.seconds)
+            isDescriptionVisible = false
+            if (errorInfo.willRetryInBackground) {
+                alphaTransition.animateTo(0.5f)
+            } else {
+                errorInfo.state.dismiss()
+            }
+        }
+
+        AnimatedVisibility(isDescriptionVisible) {
+            Column(Modifier.padding(start = 4.dp)) {
+                val errorMessage = stringResource(
+                    when (errorInfo.source) {
+                        is AchievementInfo.ServerCommunicationFailed.ErrorSource.AwardAchievement ->
+                            R.string.achievement_submission_failed
+                        is AchievementInfo.ServerCommunicationFailed.ErrorSource.SubmitLeaderboard ->
+                            R.string.leaderboard_submission_failed
+                    }
+                )
+
+                Text(
+                    text = errorMessage,
+                    style = MaterialTheme.typography.caption.copy(fontWeight = FontWeight.Bold),
+                )
+                Text(
+                    text = stringResource(
+                        if (errorInfo.willRetryInBackground) {
+                            R.string.ra_submission_retry_background
+                        } else {
+                            R.string.ra_submission_not_retrying
+                        },
+                    ),
+                    style = MaterialTheme.typography.caption,
+                )
+            }
+        }
+    }
+}

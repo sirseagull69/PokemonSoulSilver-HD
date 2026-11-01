@@ -1,0 +1,58 @@
+name: APK bauen
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: zulu
+          cache: gradle
+
+      - name: Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: glslang für die Vulkan-Shader
+        run: sudo apt-get update && sudo apt-get install -y glslang-tools
+
+      - name: Bauen
+        env:
+          MELONDS_KEYSTORE: ${{ secrets.MELONDS_KEYSTORE }}
+          MELONDS_KEYSTORE_PASSWORD: ${{ secrets.MELONDS_KEYSTORE_PASSWORD }}
+        run: |
+          COMMIT=$(git rev-parse --short HEAD)
+          sed -i -e 's/\(versionName = "\)\(.*\)\("\)/\1\2-licht ('"$COMMIT"')\3/g' buildSrc/src/main/kotlin/AppConfig.kt
+          echo "$MELONDS_KEYSTORE" | base64 -d > ${{ runner.workspace }}/keystore.jks
+          echo "MELONDS_KEYSTORE=${{ runner.workspace }}/keystore.jks" >> local.properties
+          echo "MELONDS_KEYSTORE_PASSWORD=$MELONDS_KEYSTORE_PASSWORD" >> local.properties
+          echo "MELONDS_KEY_ALIAS=melonds" >> local.properties
+          echo "MELONDS_KEY_PASSWORD=$MELONDS_KEYSTORE_PASSWORD" >> local.properties
+          chmod +x ./gradlew
+          ./gradlew :app:regenerateVulkanSpirv :app:assembleGitHubNightlyRelease
+          rm -f ${{ runner.workspace }}/keystore.jks
+
+      - name: Release aktualisieren
+        uses: ncipollo/release-action@v1
+        with:
+          allowUpdates: true
+          prerelease: true
+          commit: main
+          tag: licht-latest
+          name: 'WatermelonDS-Licht (aktuell)'
+          body: 'Neuester Build von main. Licht & Schatten: Einstellungen → Video → Renderer Vulkan, „Light & shadow“ an.'
+          artifacts: app/build/outputs/apk/gitHubNightly/release/app-gitHub-nightly-release.apk
+          artifactContentType: application/vnd.android.package-archive
+          removeArtifacts: true

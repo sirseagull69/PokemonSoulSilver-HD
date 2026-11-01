@@ -1,0 +1,15 @@
+*.iml
+.gradle
+/local.properties
+/.idea
+.cxx
+.DS_Store
+/build
+/captures
+.externalNativeBuild
+.kotlin
+common/bin/
+rcheevos-api/bin/
+*.patch
+!/app/librashader-patches/*.patch
+

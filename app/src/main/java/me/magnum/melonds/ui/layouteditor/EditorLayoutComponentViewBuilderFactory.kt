@@ -1,0 +1,27 @@
+package me.magnum.melonds.ui.layouteditor
+
+import me.magnum.melonds.domain.model.layout.LayoutComponent
+import me.magnum.melonds.ui.common.LayoutComponentViewBuilder
+import me.magnum.melonds.ui.common.LayoutComponentViewBuilderFactory
+import me.magnum.melonds.ui.common.componentbuilders.*
+
+class EditorLayoutComponentViewBuilderFactory : LayoutComponentViewBuilderFactory {
+    private val layoutComponentViewBuilderCache = mutableMapOf<LayoutComponent, LayoutComponentViewBuilder>()
+
+    override fun getLayoutComponentViewBuilder(layoutComponent: LayoutComponent): LayoutComponentViewBuilder {
+        return layoutComponentViewBuilderCache.getOrElse(layoutComponent) {
+            val builder = when (layoutComponent) {
+                LayoutComponent.TOP_SCREEN -> TopScreenLayoutComponentViewBuilder()
+                LayoutComponent.BOTTOM_SCREEN -> BottomScreenLayoutComponentViewBuilder()
+                LayoutComponent.HYBRID_SCREEN -> HybridScreenLayoutComponentViewBuilder()
+                LayoutComponent.SLOT2_ANALOG -> EditorBackgroundLayoutComponentViewBuilder(Slot2AnalogLayoutComponentViewBuilder())
+                LayoutComponent.DPAD -> EditorBackgroundLayoutComponentViewBuilder(DpadLayoutComponentViewBuilder())
+                LayoutComponent.BUTTONS -> EditorBackgroundLayoutComponentViewBuilder(ButtonsLayoutComponentViewBuilder())
+                else -> EditorBackgroundLayoutComponentViewBuilder(SingleButtonLayoutComponentViewBuilder(layoutComponent))
+            }
+
+            layoutComponentViewBuilderCache[layoutComponent] = builder
+            builder
+        }
+    }
+}

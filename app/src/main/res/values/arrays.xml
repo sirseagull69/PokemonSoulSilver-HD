@@ -1,0 +1,183 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string-array name="ra_offline_backend_options">
+        <item>@string/ra_offline_backend_built_in</item>
+        <item>@string/ra_offline_backend_proxy</item>
+    </string-array>
+    <string-array name="ra_offline_backend_values">
+        <item>built_in</item>
+        <item>ra_offline_proxy</item>
+    </string-array>
+    <string-array name="update_channel_options">
+        <item>@string/update_channel_stable</item>
+        <item>@string/update_channel_prerelease</item>
+    </string-array>
+    <string-array name="update_channel_values">
+        <item>stable</item>
+        <item>stable_and_prerelease</item>
+    </string-array>
+    <string-array name="rom_icon_filtering_values">
+        <item>none</item>
+        <item>linear</item>
+    </string-array>
+
+    <string-array name="console_type_values">
+        <item>ds</item>
+        <item>dsi</item>
+    </string-array>
+
+    <string-array name="firmware_settings_language_values">
+        <item>1</item>
+        <item>2</item>
+        <item>3</item>
+        <item>4</item>
+        <item>5</item>
+        <item>0</item>
+    </string-array>
+
+    <string-array name="fps_counter_position_values">
+        <item>hidden</item>
+        <item>top_left</item>
+        <item>top_center</item>
+        <item>top_right</item>
+        <item>bottom_left</item>
+        <item>bottom_center</item>
+        <item>bottom_right</item>
+    </string-array>
+
+    <string-array name="video_renderer_values">
+        <item>software</item>
+        <item>opengl</item>
+        <item>vulkan</item>
+        <item>compute</item>
+    </string-array>
+
+    <string-array name="video_internal_resolution_values">
+        <item>1</item>
+        <item>2</item>
+        <item>3</item>
+        <item>4</item>
+        <item>5</item>
+        <item>6</item>
+        <item>7</item>
+        <item>8</item>
+        <item>12</item>
+        <item>16</item>
+    </string-array>
+
+    <string-array name="video_filtering_values">
+        <item>none</item>
+        <item>linear</item>
+        <item>xbr2</item>
+        <item>hq2x</item>
+        <item>hq4x</item>
+        <item>quilez</item>
+        <item>lcd</item>
+        <item>scanlines</item>
+        <item>retroarch</item>
+    </string-array>
+
+    <string-array name="video_vulkan_driver_mode_values">
+        <item>system</item>
+        <item>custom</item>
+    </string-array>
+
+    <string-array name="dsi_camera_source_values">
+        <item>black_screen</item>
+        <item>physical_cameras</item>
+        <item>static_image</item>
+    </string-array>
+
+    <string-array name="external_display_screen_values">
+        <item>top</item>
+        <item>bottom</item>
+    </string-array>
+
+    <string-array name="external_display_mode_values">
+        <item>mirror</item>
+        <item>melon_dual_ds</item>
+    </string-array>
+
+    <string-array name="audio_interpolation_values">
+        <item>none</item>
+        <item>linear</item>
+        <item>cosine</item>
+        <item>cubic</item>
+    </string-array>
+
+    <string-array name="audio_bitrate_values">
+        <item>auto</item>
+        <item>bit10</item>
+        <item>bit16</item>
+    </string-array>
+
+    <string-array name="audio_latency_values">
+        <item>low</item>
+        <item>medium</item>
+        <item>high</item>
+    </string-array>
+
+    <string-array name="mic_source_values">
+        <item>none</item>
+        <item>blow</item>
+        <item>device</item>
+    </string-array>
+
+    <string-array name="soft_input_behaviour">
+        <item>always_visible</item>
+        <item>hide_system_buttons_when_controller_connected</item>
+        <item>hide_mapped_buttons_when_controller_connected</item>
+        <item>always_invisible</item>
+    </string-array>
+
+    <string-array name="theme_values">
+        <item>light</item>
+        <item>dark</item>
+        <item>system</item>
+    </string-array>
+
+    <string-array name="fast_forward_speed_multiplier_values">
+        <item>-1</item>
+        <item>1.5</item>
+        <item>2</item>
+        <item>3</item>
+        <item>4</item>
+        <item>8</item>
+    </string-array>
+
+    <string-array name="frame_limit_speed_multiplier_values">
+        <item>1</item>
+        <item>0.75</item>
+        <item>0.5</item>
+        <item>0.25</item>
+    </string-array>
+
+    <string-array name="frameskip_mode_values">
+        <item>off</item>
+        <item>manual</item>
+        <item>auto</item>
+    </string-array>
+
+    <string-array name="frameskip_manual_value_values">
+        <item>0</item>
+        <item>1</item>
+        <item>2</item>
+        <item>3</item>
+        <item>4</item>
+    </string-array>
+
+    <string-array name="dldi_sd_card_image_size_values">
+        <item>0</item>
+        <item>1</item>
+        <item>2</item>
+        <item>3</item>
+        <item>4</item>
+        <item>5</item>
+    </string-array>
+
+    <string-array name="save_state_location_values">
+        <item>save_dir</item>
+        <item>rom_dir</item>
+        <item>internal_dir</item>
+    </string-array>
+</resources>
