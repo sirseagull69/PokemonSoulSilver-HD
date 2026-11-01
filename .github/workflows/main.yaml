@@ -43,8 +43,12 @@ jobs:
           sed -i -e 's/\(versionName = "\)\(.*\)\("\)/\1\2-licht ('"$COMMIT"')\3/g' buildSrc/src/main/kotlin/AppConfig.kt
           if [ -n "$MELONDS_KEYSTORE" ]; then
             # Leerzeichen/Zeilenumbrüche vom Einfügen am Handy entfernen
-            printf '%s' "$MELONDS_KEYSTORE" | tr -cd 'A-Za-z0-9+/=' | base64 -d > ${{ runner.workspace }}/keystore.jks
-            MELONDS_KEYSTORE_PASSWORD=$(printf '%s' "$MELONDS_KEYSTORE_PASSWORD" | tr -cd 'a-f0-9')
+            # Längsten Base64-Block nehmen (falls versehentlich die ganze Datei eingefügt wurde)
+            printf '%s' "$MELONDS_KEYSTORE" | grep -oE '[A-Za-z0-9+/=]{200,}' | awk '{ print length, $0 }' | sort -rn | head -1 | cut -d' ' -f2 | base64 -d > ${{ runner.workspace }}/keystore.jks || true
+            PW=$(printf '%s' "$MELONDS_KEYSTORE_PASSWORD" | grep -oE '[a-f0-9]{32}' | head -1)
+            [ -z "$PW" ] && PW=$(printf '%s' "$MELONDS_KEYSTORE" | grep -oE '(^|[^A-Za-z0-9+/])[a-f0-9]{32}($|[^A-Za-z0-9+/=])' | grep -oE '[a-f0-9]{32}' | tail -1)
+            MELONDS_KEYSTORE_PASSWORD="$PW"
+            echo "Keystore: $(wc -c < ${{ runner.workspace }}/keystore.jks) Bytes, Passwortlänge ${#PW}"
             keytool -list -keystore ${{ runner.workspace }}/keystore.jks -storepass "$MELONDS_KEYSTORE_PASSWORD" >/dev/null || { echo "::error::Keystore-Secret oder Passwort passt nicht"; exit 1; }
           else
             # Ohne Secret: Wegwerf-Schlüssel. Funktioniert, aber jedes Update muss dann neu installiert werden.
